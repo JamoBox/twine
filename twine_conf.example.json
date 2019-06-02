@@ -1,0 +1,9 @@
+{
+    "st": {
+        "branch": "master",
+        "path": "~/sources/st",
+        "build_cmds": [
+            "sudo make install"
+        ]
+    }
+}
