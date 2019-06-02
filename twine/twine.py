@@ -10,6 +10,10 @@ from .pkg_conf import PkgConfig
 PKGCONF = None
 
 
+def _run_post_install(pkg):
+    pass  #TODO: cd to repo and run cmds from config
+
+
 @click.command()
 @click.option('--yes/--no', default=False, help='Auto-say yes')
 @click.argument('package')
@@ -27,6 +31,10 @@ def update(yes, package):
     if info.commit == repo.commit():
         click.echo('No updates available.')
         sys.exit(0)
+    else:
+        if yes or click.prompt('Continue?', abort=True):
+            origin.pull()
+            _run_post_install(pkg)
 
 
 @click.group()
