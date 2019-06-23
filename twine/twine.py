@@ -1,7 +1,11 @@
 import os
 import sys
+import subprocess
+import logging
 
 import click
+import structlog
+from structlogger import configure_logger
 from git import Repo
 
 from .pkg_conf import PkgConfig
@@ -9,15 +13,28 @@ from .pkg_conf import PkgConfig
 
 PKGCONF = None
 
+configure_logger(log_to_file=False)
+logging.Logger('twine').setLevel(logging.INFO)
+LOG = structlog.get_logger('twine')
+
 
 def _run_post_install(pkg):
-    pass  #TODO: cd to repo and run cmds from config
+    LOG.info('Running post-install scripts..')
+    cmds = pkg.get('build_cmds')
+    for cmd in cmds:
+        LOG.info('Running command..', cmd=cmd)
+        proc = subprocess.run(cmd, cwd=pkg.get('path'),
+                              stderr=subprocess.STDOUT, shell=True, text=True)
+        click.echo(proc.stdout)
+    LOG.info('Update complete')
 
 
 @click.command()
 @click.option('--yes/--no', default=False, help='Auto-say yes')
 @click.argument('package')
 def update(yes, package):
+    LOG.info('Checking for package in config..',
+             package=package, config=PKGCONF.path)
     pkg = PKGCONF.get(package)
     if not pkg:
         raise click.ClickException(
@@ -26,13 +43,18 @@ def update(yes, package):
     repo = Repo.init(pkg.get('path'))
     assert not repo.bare
     origin = repo.remotes.origin
-    repo.git.checkout(pkg.get('branch'))
-    info = origin.fetch(refspec=pkg.get('branch'))[0]
+    branch = pkg.get('branch')
+    LOG.info('Checking out branch..', branch=branch)
+    repo.git.checkout(branch)
+    LOG.info('Fetching from remote..', branch=branch, remote=origin)
+    info = origin.fetch(refspec=branch)[0]
     if info.commit == repo.commit():
         click.echo('No updates available.')
         sys.exit(0)
     else:
-        if yes or click.prompt('Continue?', abort=True):
+        LOG.info('Update available', commit=info.commit)
+        if yes or click.confirm('Continue?'):
+            LOG.info('Pulling updates..')
             origin.pull()
             _run_post_install(pkg)
 

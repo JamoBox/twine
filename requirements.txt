@@ -5,3 +5,8 @@ pudb==2019.1
 Pygments==2.4.2
 smmap2==2.0.5
 urwid==2.0.1
+structlogger
+structlog==18.1.0
+colorama==0.3.9
+python-json-logger==0.1.9
+six==1.11.0

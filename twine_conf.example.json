@@ -5,5 +5,12 @@
         "build_cmds": [
             "sudo make install"
         ]
+    },
+    "package-query": {
+        "branch": "master",
+        "path": "/home/pete/sources/package-query",
+        "build_cmds": [
+            "echo HELLO WORLSD"
+        ]
     }
 }
