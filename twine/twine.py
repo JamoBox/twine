@@ -17,15 +17,30 @@ configure_logger(log_to_file=False)
 logging.Logger('twine').setLevel(logging.INFO)
 LOG = structlog.get_logger('twine')
 
+SAFE_COMMIT = None
 
-def _run_post_install(pkg):
+
+def _rollback(pkg):
+    repo = Repo.init(pkg.get('path'))
+    repo.git.checkout(SAFE_COMMIT)
+    _run_post_install(pkg, first_run=False)
+
+
+def _run_post_install(pkg, first_run=True):
     LOG.info('Running post-install scripts..')
     cmds = pkg.get('build_cmds')
-    for cmd in cmds:
-        LOG.info('Running command..', cmd=cmd)
-        proc = subprocess.run(cmd, cwd=pkg.get('path'),
-                              stderr=subprocess.STDOUT, shell=True, text=True)
-        click.echo(proc.stdout)
+    try:
+        curr_cmd = None
+        for cmd in cmds:
+            curr_cmd = cmd
+            LOG.info('Running command..', cmd=cmd)
+            proc = subprocess.run(cmd, cwd=pkg.get('path'),
+                                  stderr=subprocess.STDOUT, shell=True, text=True)
+            click.echo(proc.stdout)
+    except Exception as e:
+        LOG.error('Execption occured during post-install', cmd=curr_cmd, exc=e)
+        if click.confirm('Rollback to safe state?'):
+            _rollback(pkg)
     LOG.info('Update complete')
 
 
@@ -33,6 +48,7 @@ def _run_post_install(pkg):
 @click.option('--yes/--no', default=False, help='Auto-say yes')
 @click.argument('package')
 def update(yes, package):
+    global SAFE_COMMIT
     LOG.info('Checking for package in config..',
              package=package, config=PKGCONF.path)
     pkg = PKGCONF.get(package)
@@ -41,6 +57,7 @@ def update(yes, package):
                 f'Package "{package}" does not exist in config.'
         )
     repo = Repo.init(pkg.get('path'))
+    SAFE_COMMIT = repo.commit()
     assert not repo.bare
     origin = repo.remotes.origin
     branch = pkg.get('branch')
