@@ -1,6 +1,6 @@
 Click==7.0
 gitdb2==2.0.5
-GitPython==2.1.11
+GitPython==3.1.34
 pudb==2019.1
 Pygments==2.7.4
 smmap2==2.0.5
